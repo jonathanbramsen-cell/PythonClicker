@@ -1,0 +1,28 @@
+{
+  "todoList": [
+    {
+      "id": 1,
+      "title": "Inspect project files",
+      "description": "Open autoclicker.py, requirements.txt, and tests to determine dependencies and whether it can run in the browser.",
+      "status": "in-progress"
+    },
+    {
+      "id": 2,
+      "title": "Decide feasibility",
+      "description": "Determine if the script uses OS-level APIs (pyautogui/keyboard) making client-side browser execution impossible, and list alternatives.",
+      "status": "not-started"
+    },
+    {
+      "id": 3,
+      "title": "Provide instructions",
+      "description": "Give concrete instructions for running in browser: Pyodide/Brython (client-side) if possible, or a local server + web UI (Flask) if not.",
+      "status": "not-started"
+    },
+    {
+      "id": 4,
+      "title": "(Optional) Implement example",
+      "description": "If the user wants, implement a minimal Flask-based web UI that calls the clicker script on the server and verify it works.",
+      "status": "not-started"
+    }
+  ]
+}

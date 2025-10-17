@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>AutoClicker Web UI</title>
+  </head>
+  <body>
+    <h1>AutoClicker</h1>
+    <p>Status: <span id="status">unknown</span></p>
+    <button id="toggle">Toggle</button>
+
+    <script>
+      async function updateStatus(){
+        const r = await fetch('/status');
+        const j = await r.json();
+        document.getElementById('status').textContent = j.running ? 'ON' : 'OFF';
+      }
+      document.getElementById('toggle').addEventListener('click', async ()=>{
+        await fetch('/toggle', {method: 'POST'});
+        updateStatus();
+      });
+      updateStatus();
+      setInterval(updateStatus, 2000);
+    </script>
+  </body>
+</html>

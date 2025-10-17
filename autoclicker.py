@@ -12,7 +12,15 @@ Notes:
 import threading
 import time
 import argparse
-from pynput import mouse, keyboard
+try:
+    from pynput import mouse, keyboard
+    _HAS_PYNPUT = True
+except Exception:
+    # Allow importing the module in environments without pynput (tests, CI, browsers)
+    mouse = None
+    keyboard = None
+    _HAS_PYNPUT = False
+
 import tkinter as tk
 from threading import Thread
 
@@ -36,7 +44,9 @@ class AutoClicker:
         self.running = False
         self._thread = None
         self._stop_event = threading.Event()
-        self.mouse_controller = mouse.Controller()
+        # Only create a real mouse controller if pynput is available.
+        # Tests can replace this attribute with a dummy controller.
+        self.mouse_controller = mouse.Controller() if _HAS_PYNPUT else None
         self._dry_run = False
 
     def _click_loop(self):
@@ -45,8 +55,11 @@ class AutoClicker:
                 if self._dry_run:
                     print(f"[dry-run] Click at {time.time():.3f}")
                 else:
-                    # click at current position
-                    self.mouse_controller.click(mouse.Button.left, 1)
+                    # click at current position (if controller available)
+                    if self.mouse_controller is None:
+                        print("[warning] No mouse controller available; skipping click.")
+                    else:
+                        self.mouse_controller.click(mouse.Button.left, 1)
 
     def start(self):
         if self._thread is None or not self._thread.is_alive():
@@ -72,6 +85,7 @@ def main():
     parser.add_argument("--interval", "-i", type=float, default=0.1, help="Interval between clicks in seconds")
     parser.add_argument("--dry-run", action="store_true", help="Don't perform real clicks; print actions instead")
     parser.add_argument("--start", action="store_true", help="Start clicking immediately")
+    parser.add_argument("--gui", action="store_true", help="Show a small Tkinter GUI")
     parser.add_argument("--duration", type=float, default=None, help="If provided, stop after this many seconds")
     args = parser.parse_args()
 
@@ -128,23 +142,40 @@ def main():
         finally:
             clicker.stop()
         return
+    # If pynput keyboard is available, listen to F6/ESC as before.
+    if _HAS_PYNPUT and keyboard is not None:
+        def on_press(key):
+            try:
+                if key == keyboard.Key.f6:
+                    clicker.toggle()
+                    print("Clicking:", "ON" if clicker.running else "OFF")
+                elif key == keyboard.Key.esc:
+                    # stop everything
+                    clicker.stop()
+                    print("Exiting...")
+                    return False
+            except Exception as e:
+                print("Key handler error:", e)
 
-    def on_press(key):
+        # listen to keyboard events until ESC pressed
+        with keyboard.Listener(on_press=on_press) as listener:
+            listener.join()
+    else:
+        # Fallback interactive loop for environments without pynput
         try:
-            if key == keyboard.Key.f6:
-                clicker.toggle()
-                print("Clicking:", "ON" if clicker.running else "OFF")
-            elif key == keyboard.Key.esc:
-                # stop everything
-                clicker.stop()
-                print("Exiting...")
-                return False
-        except Exception as e:
-            print("Key handler error:", e)
-
-    # listen to keyboard events until ESC pressed
-    with keyboard.Listener(on_press=on_press) as listener:
-        listener.join()
+            print("Interactive mode (no pynput). Type 't' + Enter to toggle, 'q' + Enter to quit.")
+            while True:
+                cmd = input().strip().lower()
+                if cmd == 't':
+                    clicker.toggle()
+                    print("Clicking:", "ON" if clicker.running else "OFF")
+                elif cmd == 'q':
+                    clicker.stop()
+                    print("Exiting...")
+                    break
+        except (KeyboardInterrupt, EOFError):
+            clicker.stop()
+            print("Exiting...")
 
 
 if __name__ == "__main__":
